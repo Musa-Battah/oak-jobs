@@ -1,10 +1,11 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-export default function RegisterPage() {
+function RegisterContent() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
@@ -141,5 +142,23 @@ export default function RegisterPage() {
         Already have an account? <Link href="/login">Login</Link>
       </p>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ 
+        maxWidth: '400px', 
+        margin: '80px auto', 
+        padding: '40px', 
+        textAlign: 'center',
+        color: '#cccccc'
+      }}>
+        Loading...
+      </div>
+    }>
+      <RegisterContent />
+    </Suspense>
   );
 }

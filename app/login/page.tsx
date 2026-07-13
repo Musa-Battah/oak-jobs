@@ -1,10 +1,12 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-export default function LoginPage() {
+// Component that uses useSearchParams - must be wrapped in Suspense
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') || '/';
@@ -94,5 +96,24 @@ export default function LoginPage() {
         Don't have an account? <Link href="/register">Register</Link>
       </p>
     </div>
+  );
+}
+
+// Main page component with Suspense
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ 
+        maxWidth: '400px', 
+        margin: '80px auto', 
+        padding: '40px', 
+        textAlign: 'center',
+        color: '#cccccc'
+      }}>
+        Loading...
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }
