@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cache } from '@/lib/cache';
 
+// POST - Clear all cache
 export async function POST(request: NextRequest) {
   try {
     // Check API key
@@ -31,8 +32,8 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET endpoint to check cache stats
-export async function GET() {
+// GET - Get cache stats
+export async function GET(request: NextRequest) {
   try {
     const apiKey = request.headers.get('X-API-Key');
     const savedKey = process.env.CSV_IMPORT_API_KEY;
