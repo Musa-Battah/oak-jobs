@@ -1,41 +1,105 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
+# Dependencies
 /node_modules
 /.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
+.pnp.js
+.pnp.loader.mjs
 
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
+# Next.js build output
+/.next
+/out
 /build
+/dist
 
-# misc
-.DS_Store
-*.pem
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
 
-# debug
+# Logs
+logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
+pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
 
-# vercel
+# IDE files
+.vscode/
+.idea/
+*.sublime-*
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Backup files
+*.bak
+*.backup
+
+# Coverage files
+coverage/
+*.lcov
+
+# Testing
+.nyc_output/
+
+# Build artifacts
+dist/
+build/
+
+# Python (if you have scrapers in the same repo)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Vercel
 .vercel
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# Railway
+.railway
+
+# Neon
+.neon
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# CSV files (if you don't want to commit them)
+*.csv
+!sample.csv
+
+# Secrets
+*.pem
+*.key
+*.crt
+*.p12
+
+# Debug
+debug.log
+
+# Misc
+*.pkg
+*.gz
