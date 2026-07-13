@@ -3,9 +3,10 @@ import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 import { cache } from '@/lib/cache';
 
+// DELETE - Delete a job
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Verify admin token
@@ -20,7 +21,9 @@ export async function DELETE(
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    const jobId = parseInt(params.id);
+    const { id } = await params;
+    const jobId = parseInt(id);
+    
     if (isNaN(jobId)) {
       return NextResponse.json({ error: 'Invalid job ID' }, { status: 400 });
     }
@@ -41,9 +44,10 @@ export async function DELETE(
   }
 }
 
+// PUT - Update a job
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Verify admin token
@@ -58,7 +62,9 @@ export async function PUT(
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    const jobId = parseInt(params.id);
+    const { id } = await params;
+    const jobId = parseInt(id);
+    
     if (isNaN(jobId)) {
       return NextResponse.json({ error: 'Invalid job ID' }, { status: 400 });
     }

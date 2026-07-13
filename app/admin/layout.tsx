@@ -1,39 +1,46 @@
 'use client';
 
-import type { Metadata } from "next";
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import './admin.css';
-
-// Metadata can't be exported from Client Component, so we'll remove it
-// export const metadata: Metadata = {
-//   title: "Admin Dashboard - Oak Jobs",
-//   description: "Manage jobs and site content",
-// };
 
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Check if user is logged in
     const token = localStorage.getItem('auth_token');
     if (!token) {
-      window.location.href = '/login?redirect=/admin';
+      router.push('/login?redirect=/admin');
+      return;
     }
     setIsLoading(false);
-  }, []);
+  }, [router]);
 
   const handleLogout = () => {
     localStorage.removeItem('auth_token');
-    window.location.href = '/login';
+    router.push('/login');
   };
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '100vh',
+        background: '#000',
+        color: '#fff'
+      }}>
+        Loading...
+      </div>
+    );
   }
 
   return (
