@@ -45,6 +45,9 @@ export default function Header() {
               <Link href="/complete-profile" className="nav-link logged-in-only">
                 Update Profile
               </Link>
+              <Link href="/admin" className="nav-link logged-in-only" style={{ color: '#4169E1' }}>
+                ⚡ Admin
+              </Link>
               <button
                 onClick={() => {
                   localStorage.removeItem('auth_token');

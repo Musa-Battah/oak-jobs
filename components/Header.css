@@ -19,7 +19,7 @@
   padding: 0 24px;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center; /* Changed from flex-end to center */
   min-height: 70px;
 }
 
@@ -28,7 +28,7 @@
   align-items: center;
   gap: 2rem;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: center; /* Centered */
 }
 
 .nav-link {
@@ -42,7 +42,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  font-family: inherit;
+  font-family: 'Playpen Sans', 'Inter', 'Segoe UI', sans-serif;
 }
 
 .nav-link:hover {
@@ -64,6 +64,7 @@
   color: #a71d2a;
 }
 
+/* Mobile responsive */
 @media (max-width: 680px) {
   .header-container {
     padding: 0 20px;

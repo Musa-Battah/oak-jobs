@@ -1,4 +1,32 @@
 /* =============================================
+   FONT IMPORTS
+   ============================================= */
+/* Playpen Sans is now loaded via Next.js font loader */
+/* But we ensure it applies everywhere */
+
+* {
+  font-family: 'Playpen Sans', 'Inter', 'Segoe UI', sans-serif;
+}
+
+body {
+  font-family: 'Playpen Sans', 'Inter', 'Segoe UI', sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6, p, span, a, div, button, input, select, textarea {
+  font-family: 'Playpen Sans', 'Inter', 'Segoe UI', sans-serif;
+}
+
+/* Force Playpen Sans everywhere */
+body, body * {
+  font-family: 'Playpen Sans', 'Inter', 'Segoe UI', sans-serif !important;
+}
+
+/* Buttons and inputs need it too */
+button, input, select, textarea {
+  font-family: 'Playpen Sans', 'Inter', 'Segoe UI', sans-serif !important;
+}
+
+/* =============================================
    BASE RESET & GLOBAL STYLES - DARK THEME
    ============================================= */
 * {

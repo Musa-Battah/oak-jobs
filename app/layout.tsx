@@ -3,11 +3,16 @@ import { Inter, Playpen_Sans } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ 
+  subsets: ["latin"],
+  variable: '--font-inter',
+});
+
 const playpenSans = Playpen_Sans({ 
   subsets: ["latin"],
   weight: ["100", "200", "300", "400", "500", "600", "700", "800"],
   variable: '--font-playpen-sans',
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
@@ -23,12 +28,13 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body 
-        className={`${playpenSans.variable} ${inter.className}`}
+        className={`${playpenSans.variable} ${inter.variable}`}
         suppressHydrationWarning
+        style={{ fontFamily: 'var(--font-playpen-sans), "Inter", "Segoe UI", sans-serif' }}
       >
         <Header />
         <main>{children}</main>
       </body>
     </html>
   );
-};
+}
