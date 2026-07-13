@@ -23,6 +23,7 @@ export default function JobsList() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -33,6 +34,8 @@ export default function JobsList() {
   useEffect(() => {
     const fetchJobs = async () => {
       setIsLoading(true);
+      setError(null);
+      
       try {
         const params = new URLSearchParams({
           page: currentPage.toString(),
@@ -43,12 +46,25 @@ export default function JobsList() {
         if (location) params.append('job_location', location);
 
         const response = await fetch(`/api/jobs?${params.toString()}`);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
-        setJobs(data.jobs || []);
+        
+        // Ensure job_category is always an array
+        const jobsWithSafeCategories = (data.jobs || []).map((job: any) => ({
+          ...job,
+          job_category: job.job_category || [],
+        }));
+        
+        setJobs(jobsWithSafeCategories);
         setTotal(data.total || 0);
         setTotalPages(data.totalPages || 1);
       } catch (error) {
         console.error('Error fetching jobs:', error);
+        setError('Failed to load jobs. Please try again later.');
       } finally {
         setIsLoading(false);
       }
@@ -58,14 +74,73 @@ export default function JobsList() {
   }, [keyword, category, location, currentPage]);
 
   if (isLoading) {
-    return <div style={{ textAlign: 'center', padding: '40px' }}>Loading jobs...</div>;
+    return (
+      <div style={{ 
+        textAlign: 'center', 
+        padding: '60px 40px',
+        color: '#cccccc'
+      }}>
+        <div style={{ 
+          display: 'inline-block',
+          width: '40px',
+          height: '40px',
+          border: '3px solid #333333',
+          borderTop: '3px solid #ffffff',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }} />
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+        <p style={{ marginTop: '15px' }}>Loading jobs...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="no-jobs">
+        <p style={{ color: '#dc3545' }}>❌ {error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          style={{
+            display: 'inline-block',
+            marginTop: '15px',
+            padding: '10px 20px',
+            background: '#4169E1',
+            color: '#fff',
+            fontWeight: '700',
+            border: 'none',
+            borderRadius: '5px',
+            cursor: 'pointer',
+          }}
+        >
+          Retry
+        </button>
+      </div>
+    );
   }
 
   if (jobs.length === 0) {
     return (
       <div className="no-jobs">
         <p>😔 No jobs found matching your criteria.</p>
-        <Link href="/jobs" style={{ display: 'inline-block', marginTop: '10px', padding: '10px 20px', background: '#4169E1', color: '#fff', fontWeight: '700', textDecoration: 'none', borderRadius: '5px' }}>
+        <Link 
+          href="/jobs" 
+          style={{ 
+            display: 'inline-block', 
+            marginTop: '15px', 
+            padding: '10px 20px', 
+            background: '#4169E1', 
+            color: '#fff', 
+            fontWeight: '700', 
+            textDecoration: 'none', 
+            borderRadius: '5px' 
+          }}
+        >
           View All Jobs
         </Link>
       </div>
@@ -93,7 +168,7 @@ export default function JobsList() {
             <p>
               <strong>📍 Location:</strong> {job.job_location}
             </p>
-            {job.job_category.length > 0 && (
+            {job.job_category && job.job_category.length > 0 && (
               <p>
                 <strong>📂 Category:</strong> {job.job_category.join(', ')}
               </p>

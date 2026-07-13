@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -18,7 +19,8 @@ interface Job {
   created_at: string;
 }
 
-export default function JobsForYouPage() {
+// Component that uses useSearchParams - must be wrapped in Suspense
+function JobsForYouContent() {
   const searchParams = useSearchParams();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -62,7 +64,6 @@ export default function JobsForYouPage() {
         }
 
         const data = await response.json();
-        // Ensure job_category is always an array
         const jobsWithSafeCategories = (data.jobs || []).map((job: any) => ({
           ...job,
           job_category: job.job_category || [],
@@ -83,8 +84,23 @@ export default function JobsForYouPage() {
 
   if (isLoading) {
     return (
-      <div style={{ maxWidth: '900px', margin: '40px auto', padding: '40px 20px', textAlign: 'center' }}>
-        Loading your personalized jobs...
+      <div style={{ maxWidth: '900px', margin: '40px auto', padding: '40px 20px', textAlign: 'center', color: '#cccccc' }}>
+        <div style={{ 
+          display: 'inline-block',
+          width: '40px',
+          height: '40px',
+          border: '3px solid #333333',
+          borderTop: '3px solid #ffffff',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }} />
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+        <p style={{ marginTop: '15px' }}>Loading your personalized jobs...</p>
       </div>
     );
   }
@@ -92,17 +108,17 @@ export default function JobsForYouPage() {
   if (!isLoggedIn) {
     return (
       <div style={{ maxWidth: '900px', margin: '40px auto', padding: '40px 20px', textAlign: 'center' }}>
-        <h1 style={{ marginBottom: '20px' }}>🎯 Jobs For You</h1>
-        <p style={{ color: '#6c757d', marginBottom: '20px' }}>
-          Please <Link href="/login">login</Link> to see personalized job recommendations.
+        <h1 style={{ marginBottom: '20px', color: '#ffffff' }}>🎯 Jobs For You</h1>
+        <p style={{ color: '#cccccc', marginBottom: '20px' }}>
+          Please <Link href="/login" style={{ color: '#ffffff', textDecoration: 'underline' }}>login</Link> to see personalized job recommendations.
         </p>
         <Link
           href="/login"
           style={{
             display: 'inline-block',
             padding: '12px 30px',
-            background: '#4169E1',
-            color: '#fff',
+            background: '#ffffff',
+            color: '#000000',
             fontWeight: '700',
             borderRadius: '8px',
             textDecoration: 'none',
@@ -124,8 +140,8 @@ export default function JobsForYouPage() {
             display: 'inline-block',
             marginTop: '20px',
             padding: '12px 30px',
-            background: '#4169E1',
-            color: '#fff',
+            background: '#ffffff',
+            color: '#000000',
             fontWeight: '700',
             borderRadius: '8px',
             textDecoration: 'none',
@@ -139,8 +155,8 @@ export default function JobsForYouPage() {
 
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto', padding: '40px 20px' }}>
-      <h1 style={{ fontSize: '2rem', marginBottom: '10px' }}>🎯 Jobs For You</h1>
-      <p style={{ color: '#6c757d', marginBottom: '30px' }}>
+      <h1 style={{ fontSize: '2rem', marginBottom: '10px', color: '#ffffff' }}>🎯 Jobs For You</h1>
+      <p style={{ color: '#cccccc', marginBottom: '30px' }}>
         Based on your selected categories and locations.
       </p>
 
@@ -155,10 +171,10 @@ export default function JobsForYouPage() {
             href="/complete-profile"
             style={{
               display: 'inline-block',
-              marginTop: '10px',
+              marginTop: '15px',
               padding: '10px 20px',
-              background: '#4169E1',
-              color: '#fff',
+              background: '#ffffff',
+              color: '#000000',
               fontWeight: '700',
               textDecoration: 'none',
               borderRadius: '5px',
@@ -243,5 +259,18 @@ export default function JobsForYouPage() {
         </>
       )}
     </div>
+  );
+}
+
+// Main page component with Suspense
+export default function JobsForYouPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ maxWidth: '900px', margin: '40px auto', padding: '40px 20px', textAlign: 'center', color: '#cccccc' }}>
+        Loading...
+      </div>
+    }>
+      <JobsForYouContent />
+    </Suspense>
   );
 }
