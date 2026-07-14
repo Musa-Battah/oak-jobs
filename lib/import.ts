@@ -50,7 +50,7 @@ export function parseCSVLine(line: string): string[] {
   return result;
 }
 
-// Parse CSV content into job objects
+// Parse CSV content into job objects - handles both Impactpool and ReliefWeb formats
 export function parseCSV(csvContent: string): JobData[] {
   const lines = csvContent.split('\n').filter(line => line.trim());
   if (lines.length < 2) {
@@ -58,48 +58,33 @@ export function parseCSV(csvContent: string): JobData[] {
   }
 
   // Parse headers
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/^"|"$/g, ''));
   
-  // Column mapping
+  // Column mapping - supports both CSV formats
   const columnMap: Record<string, string> = {
+    // Impactpool format
     'post_title': 'title',
-    'title': 'title',
-    'job_title': 'title',
-    'position': 'title',
-    'post_content': 'content',
-    'content': 'content',
-    'description': 'content',
-    'job_description': 'content',
     'company': 'company_name',
-    'organization': 'company_name',
-    'company_name': 'company_name',
     'company_logo': 'company_logo',
     'company_tagline': 'company_tagline',
     'job_location': 'job_location',
-    'location': 'job_location',
-    'country': 'job_location',
     'job_type': 'job_type',
-    'type': 'job_type',
-    'employment_type': 'job_type',
-    'job_salary': 'job_salary',
-    'salary': 'job_salary',
     'job_expires': 'job_expires',
-    'expires': 'job_expires',
-    'deadline': 'job_expires',
     'job_category': 'job_category',
-    'category': 'job_category',
-    'sector': 'job_category',
     'required_qualifications': 'required_qualifications',
-    'qualifications': 'required_qualifications',
-    'job_experience': 'job_experience',
-    'experience': 'job_experience',
-    'skills_required': 'skills_required',
-    'skills': 'skills_required',
     'application_url': 'application_url',
-    'apply_url': 'application_url',
-    'url': 'application_url',
     'application_email': 'application_email',
-    'email': 'application_email',
+    'post_content': 'content',
+    'post_tag': 'job_category',
+    
+    // ReliefWeb format
+    'company': 'company_name',
+    'experience_level': 'job_experience',
+    'post_category': 'job_category',
+    'url': 'application_url',
+    'post_content': 'content',
+    'application_url': 'application_url',
+    'date_created': 'created_at',
   };
 
   const jobs: JobData[] = [];
@@ -120,19 +105,122 @@ export function parseCSV(csvContent: string): JobData[] {
 
     if (!hasValidData) continue;
 
-    // Process job_category
+    // Handle title
+    if (!job.title) {
+      if (job.post_title) job.title = job.post_title;
+      else continue; // Skip if no title
+    }
+
+    // Handle company name
+    if (!job.company_name) {
+      if (job.company) job.company_name = job.company;
+      else job.company_name = 'Unknown Organization';
+    }
+
+    // Process job_category - handle different formats
+    let categories: string[] = [];
     if (job.job_category) {
-      if (typeof job.job_category === 'string') {
+      if (Array.isArray(job.job_category)) {
+        categories = job.job_category;
+      } else if (typeof job.job_category === 'string') {
+        // Try pipe separator first (Impactpool)
         if (job.job_category.includes('|')) {
-          job.job_category = job.job_category.split('|').map((c: string) => c.trim());
-        } else if (job.job_category.includes(',')) {
-          job.job_category = job.job_category.split(',').map((c: string) => c.trim());
-        } else {
-          job.job_category = [job.job_category.trim()];
+          categories = job.job_category.split('|').map((c: string) => c.trim());
+        } 
+        // Try comma separator (ReliefWeb)
+        else if (job.job_category.includes(',')) {
+          categories = job.job_category.split(',').map((c: string) => c.trim());
+        } 
+        // Single category
+        else {
+          categories = [job.job_category.trim()];
         }
       }
-    } else {
-      job.job_category = ['General'];
+    }
+    
+    // If no categories, try post_tag (Impactpool)
+    if (categories.length === 0 && job.post_tag) {
+      if (typeof job.post_tag === 'string') {
+        categories = job.post_tag.split(',').map((c: string) => c.trim());
+      }
+    }
+    
+    job.job_category = categories.length > 0 ? categories : ['General'];
+
+    // Process job_location - extract single location
+    let location = job.job_location || '';
+    if (location) {
+      // Remove "Remote |", "Virtual /", etc.
+      location = location.replace(/^Remote\s*[|/]\s*/i, '');
+      location = location.replace(/^Virtual\s*[|/]\s*/i, '');
+      location = location.replace(/^Hybrid\s*[|/]\s*/i, '');
+      
+      // Take first location if multiple
+      if (location.includes('|') || location.includes('/')) {
+        const parts = location.split(/[|/]/);
+        location = parts[0].trim();
+      }
+      
+      // Take first city if comma-separated (e.g., "Abuja, Nigeria")
+      if (location.includes(',')) {
+        const parts = location.split(',');
+        // Check if first part looks like a city (not a country)
+        const firstPart = parts[0].trim();
+        const countries = ['Nigeria', 'Ghana', 'Kenya', 'Senegal', 'Mali', 'Niger', 'Chad', 'Cameroon'];
+        const secondPart = parts.length > 1 ? parts[1].trim() : '';
+        const isCountry = countries.some(c => secondPart.toLowerCase().includes(c.toLowerCase()));
+        if (isCountry && firstPart.length > 2) {
+          location = firstPart;
+        } else {
+          location = firstPart;
+        }
+      }
+    }
+    job.job_location = location || 'Nigeria';
+
+    // Process job_type
+    if (!job.job_type) {
+      // Try to infer from post_category
+      if (job.post_category) {
+        const typeMap: Record<string, string> = {
+          'job': 'Full-time',
+          'consultancy': 'Consultancy',
+          'internship': 'Internship',
+          'volunteer': 'Volunteer',
+        };
+        job.job_type = typeMap[job.post_category.toLowerCase()] || 'Full-time';
+      } else {
+        job.job_type = 'Full-time';
+      }
+    }
+
+    // Clean application_url
+    if (job.application_url) {
+      // Remove markdown artifacts
+      job.application_url = job.application_url
+        .replace(/\]\(.*?\)/, '')
+        .replace(/\[.*?\]/, '')
+        .replace(/[\)\]\*]+$/, '')
+        .trim();
+      
+      // Extract first URL if multiple
+      const urlMatch = job.application_url.match(/https?:\/\/[^\s<>"\'\)\]]+/);
+      if (urlMatch) {
+        job.application_url = urlMatch[0];
+      }
+    }
+
+    // Clean content
+    if (job.content) {
+      // Remove common disclaimers
+      job.content = job.content
+        .replace(/At Impactpool we do our best.*/g, '')
+        .replace(/Please check on the recruiting organization.*/g, '')
+        .replace(/Candidates are responsible for complying.*/g, '')
+        .replace(/Before applying, please make sure.*/g, '')
+        .replace(/Applications from non-qualifying applicants.*/g, '')
+        .replace(/Only shortlisted candidates.*/g, '')
+        .trim();
     }
 
     // Set defaults
@@ -141,6 +229,19 @@ export function parseCSV(csvContent: string): JobData[] {
     job.job_location = job.job_location || 'Nigeria';
     job.job_type = job.job_type || 'Full-time';
     job.content = job.content || '';
+    job.job_category = job.job_category || ['General'];
+
+    // Clean job_expires date format
+    if (job.job_expires) {
+      try {
+        const date = new Date(job.job_expires);
+        if (!isNaN(date.getTime())) {
+          job.job_expires = date.toISOString().split('T')[0];
+        }
+      } catch {
+        // Keep as-is
+      }
+    }
 
     jobs.push(job);
   }
@@ -160,7 +261,7 @@ export async function importJobs(jobs: JobData[]): Promise<ImportResult> {
 
   for (const job of jobs) {
     try {
-      // Check if job exists
+      // Check if job exists (by title, company, location)
       const existing = await query(
         `SELECT id FROM jobs WHERE title = $1 AND company_name = $2 AND job_location = $3`,
         [job.title, job.company_name, job.job_location]
@@ -240,22 +341,9 @@ export async function importJobs(jobs: JobData[]): Promise<ImportResult> {
 
   // Invalidate caches after import
   if (result.inserted > 0 || result.updated > 0) {
-    invalidateCaches();
+    cache.clear();
+    console.log('🗑️ Cache cleared after import');
   }
 
   return result;
-}
-
-// Invalidate all caches
-export function invalidateCaches(): void {
-  cache.clear();
-  console.log('🗑️ All caches invalidated');
-}
-
-// Invalidate specific cache keys
-export function invalidateCacheKeys(keys: string[]): void {
-  for (const key of keys) {
-    cache.delete(key);
-  }
-  console.log('🗑️ Cache keys invalidated:', keys);
 }
