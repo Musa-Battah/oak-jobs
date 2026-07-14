@@ -77,13 +77,10 @@ export function parseCSV(csvContent: string): JobData[] {
     'post_content': 'content',
     'post_tag': 'job_category',
     
-    // ReliefWeb format
-    'company': 'company_name',
+    // ReliefWeb format (additional mappings - no duplicates)
     'experience_level': 'job_experience',
     'post_category': 'job_category',
     'url': 'application_url',
-    'post_content': 'content',
-    'application_url': 'application_url',
     'date_created': 'created_at',
   };
 
@@ -346,4 +343,145 @@ export async function importJobs(jobs: JobData[]): Promise<ImportResult> {
   }
 
   return result;
+}
+
+// Export single job (for admin manual add)
+export async function createJob(jobData: any): Promise<{ id: number }> {
+  const result = await query(
+    `INSERT INTO jobs (
+      title, content, company_name, company_logo, company_tagline,
+      job_location, job_type, job_salary, job_expires, job_category,
+      required_qualifications, job_experience, skills_required,
+      application_url, application_email
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+    RETURNING id`,
+    [
+      jobData.title,
+      jobData.content || '',
+      jobData.company_name,
+      jobData.company_logo || null,
+      jobData.company_tagline || null,
+      jobData.job_location,
+      jobData.job_type,
+      jobData.job_salary || null,
+      jobData.job_expires || null,
+      jobData.job_category || [],
+      jobData.required_qualifications || null,
+      jobData.job_experience || null,
+      jobData.skills_required || null,
+      jobData.application_url || null,
+      jobData.application_email || null,
+    ]
+  );
+
+  // Clear cache
+  cache.clear();
+
+  return { id: result.rows[0].id };
+}
+
+// Update existing job (for admin edit)
+export async function updateJob(id: number, jobData: any): Promise<void> {
+  await query(
+    `UPDATE jobs SET
+      title = $1,
+      content = $2,
+      company_name = $3,
+      company_logo = $4,
+      company_tagline = $5,
+      job_location = $6,
+      job_type = $7,
+      job_salary = $8,
+      job_expires = $9,
+      job_category = $10,
+      required_qualifications = $11,
+      job_experience = $12,
+      skills_required = $13,
+      application_url = $14,
+      application_email = $15,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = $16`,
+    [
+      jobData.title,
+      jobData.content || '',
+      jobData.company_name,
+      jobData.company_logo || null,
+      jobData.company_tagline || null,
+      jobData.job_location,
+      jobData.job_type,
+      jobData.job_salary || null,
+      jobData.job_expires || null,
+      jobData.job_category || [],
+      jobData.required_qualifications || null,
+      jobData.job_experience || null,
+      jobData.skills_required || null,
+      jobData.application_url || null,
+      jobData.application_email || null,
+      id,
+    ]
+  );
+
+  // Clear cache
+  cache.clear();
+}
+
+// Delete job (for admin delete)
+export async function deleteJob(id: number): Promise<void> {
+  await query('DELETE FROM jobs WHERE id = $1', [id]);
+  
+  // Clear cache
+  cache.clear();
+}
+
+// Get job by ID
+export async function getJobById(id: number): Promise<any> {
+  const result = await query('SELECT * FROM jobs WHERE id = $1', [id]);
+  return result.rows[0] || null;
+}
+
+// Get all jobs with pagination
+export async function getJobs(page: number = 1, limit: number = 10, filters: any = {}): Promise<{ jobs: any[], total: number, totalPages: number }> {
+  const offset = (page - 1) * limit;
+  let whereConditions: string[] = [];
+  let params: any[] = [];
+  let paramCount = 1;
+
+  if (filters.keyword) {
+    whereConditions.push(`(title ILIKE $${paramCount} OR company_name ILIKE $${paramCount} OR content ILIKE $${paramCount})`);
+    params.push(`%${filters.keyword}%`);
+    paramCount++;
+  }
+
+  if (filters.category) {
+    whereConditions.push(`$${paramCount} = ANY(job_category)`);
+    params.push(filters.category);
+    paramCount++;
+  }
+
+  if (filters.location) {
+    whereConditions.push(`job_location ILIKE $${paramCount}`);
+    params.push(`%${filters.location}%`);
+    paramCount++;
+  }
+
+  const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+  // Get total count
+  const countResult = await query(
+    `SELECT COUNT(*) as total FROM jobs ${whereClause}`,
+    params
+  );
+  const total = parseInt(countResult.rows[0]?.total || '0');
+
+  // Get jobs with pagination
+  const jobsResult = await query(
+    `SELECT * FROM jobs ${whereClause} ORDER BY created_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`,
+    [...params, limit, offset]
+  );
+
+  return {
+    jobs: jobsResult.rows,
+    total,
+    totalPages: Math.ceil(total / limit),
+  };
 }
