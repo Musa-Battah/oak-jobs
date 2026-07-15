@@ -33,8 +33,21 @@ function LoginContent() {
       const data = await response.json();
 
       if (response.ok) {
+        // Store token
         localStorage.setItem('auth_token', data.token);
+        
+        // Dispatch custom event for Header to update
+        window.dispatchEvent(new CustomEvent('authChange'));
+        
+        // Also trigger storage event for other tabs
+        window.dispatchEvent(new StorageEvent('storage', {
+          key: 'auth_token',
+          newValue: data.token,
+        }));
+        
+        // Redirect
         router.push(redirect);
+        router.refresh(); // Force refresh to update server components
       } else {
         setError(data.error || 'Login failed. Please try again.');
       }
@@ -70,6 +83,7 @@ function LoginContent() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            placeholder="Enter your email"
           />
         </div>
 
@@ -80,6 +94,7 @@ function LoginContent() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            placeholder="Enter your password"
           />
         </div>
 

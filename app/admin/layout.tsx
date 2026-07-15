@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import './admin.css';
 
 export default function AdminLayout({
@@ -14,7 +15,6 @@ export default function AdminLayout({
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is logged in
     const token = localStorage.getItem('auth_token');
     if (!token) {
       router.push('/login?redirect=/admin');
@@ -47,7 +47,16 @@ export default function AdminLayout({
     <div className="admin-layout">
       <aside className="admin-sidebar">
         <div className="admin-brand">
-          <h2>⚡ Oak Admin</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Image
+              src="/images/Oak Jobs-logo.png"
+              alt="Oak Jobs"
+              width={32}
+              height={32}
+              style={{ objectFit: 'contain' }}
+            />
+            <h2>⚡ Oak Admin</h2>
+          </div>
         </div>
         <nav className="admin-nav">
           <Link href="/admin" className="admin-nav-link">

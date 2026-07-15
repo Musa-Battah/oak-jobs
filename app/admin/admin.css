@@ -347,3 +347,54 @@
     padding: 6px 10px;
   }
 }
+
+/* Import Area - Enhanced */
+.admin-import-area {
+  border: 2px dashed #333333;
+  border-radius: 12px;
+  padding: 40px;
+  text-align: center;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-import-area:hover {
+  border-color: #666666;
+  background-color: #0a0a0a;
+}
+
+.admin-import-area.drag-active {
+  border-color: #ffffff !important;
+  background-color: #1a1a1a !important;
+}
+
+.admin-import-area .file-icon {
+  font-size: 48px;
+  margin-bottom: 10px;
+}
+
+.admin-import-area .file-name {
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.admin-import-area .file-size {
+  color: #888;
+  font-size: 14px;
+}
+
+.admin-import-area .upload-hint {
+  color: #888;
+  font-size: 14px;
+}
+
+.admin-import-area .upload-sub-hint {
+  color: #666;
+  font-size: 12px;
+  margin-top: 10px;
+}

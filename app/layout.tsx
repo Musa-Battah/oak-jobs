@@ -18,6 +18,14 @@ const playpenSans = Playpen_Sans({
 export const metadata: Metadata = {
   title: "Oak Jobs - Find Your Dream Job",
   description: "Discover your next career opportunity with Oak Jobs",
+  icons: {
+    icon: [
+      { url: '/images/Oak Jobs-logo.png', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/images/Oak Jobs-logo.png', type: 'image/png' },
+    ],
+  },
 };
 
 export default function RootLayout({

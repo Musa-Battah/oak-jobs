@@ -11,13 +11,15 @@
     "seed": "tsx scripts/seed-data.ts",
     "setup": "npm run setup-db && npm run seed",
     "test-connection": "tsx scripts/test-connection.ts",
-    "check-data": "tsx scripts/check-data.ts"
+    "check-data": "tsx scripts/check-data.ts",
+    "test-email": "tsx scripts/test-email.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.2",
     "jsonwebtoken": "^9.0.3",
     "next": "16.2.10",
+    "nodemailer": "^9.0.3",
     "pg": "^8.22.0",
     "react": "19.2.4",
     "react-dom": "19.2.4"

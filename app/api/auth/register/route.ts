@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { findUserByEmail, findUserByUsername, createUser } from '@/lib/auth';
+import { sendEmail, getWelcomeEmail } from '@/lib/email';
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,6 +39,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Create user (always as non-admin)
     const user = await createUser(email, username, password);
     if (!user) {
       return NextResponse.json(
@@ -46,8 +48,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Send welcome email
+    try {
+      const welcomeEmail = getWelcomeEmail(username, username);
+      await sendEmail({
+        to: email,
+        subject: welcomeEmail.subject,
+        html: welcomeEmail.html,
+      });
+      console.log('✅ Welcome email sent to:', email);
+    } catch (emailError) {
+      console.error('⚠️ Failed to send welcome email:', emailError);
+      // Don't fail registration if email fails
+    }
+
     return NextResponse.json({
       success: true,
+      message: 'Registration successful! Please login.',
       user: {
         id: user.id,
         email: user.email,

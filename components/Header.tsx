@@ -2,17 +2,62 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import Logo from './Logo';
 import './Header.css';
 
 export default function Header() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const pathname = usePathname();
+  const router = useRouter();
+
+  // Check auth status
+  const checkAuth = () => {
+    const token = localStorage.getItem('auth_token');
+    const newIsLoggedIn = !!token;
+    
+    if (newIsLoggedIn !== isLoggedIn) {
+      setIsLoggedIn(newIsLoggedIn);
+    }
+    setIsLoading(false);
+  };
 
   useEffect(() => {
-    const token = localStorage.getItem('auth_token');
-    setIsLoggedIn(!!token);
-    setIsLoading(false);
-  }, []);
+    checkAuth();
+
+    // Listen for storage changes (when login happens in another tab)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'auth_token') {
+        checkAuth();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    // Listen for custom event (for same-tab login)
+    const handleAuthChange = () => {
+      checkAuth();
+    };
+
+    window.addEventListener('authChange', handleAuthChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('authChange', handleAuthChange);
+    };
+  }, [isLoggedIn]);
+
+  // Re-check auth when route changes (for login redirects)
+  useEffect(() => {
+    checkAuth();
+  }, [pathname]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('auth_token');
+    setIsLoggedIn(false);
+    router.push('/');
+  };
 
   if (isLoading) {
     return (
@@ -30,6 +75,8 @@ export default function Header() {
     <header className="site-header">
       <div className="header-container">
         <nav className="main-nav" aria-label="Primary navigation">
+          <Logo variant="default" showText={true} />
+
           <Link href="/" className="nav-link home-link">
             Home
           </Link>
@@ -49,10 +96,7 @@ export default function Header() {
                 ⚡ Admin
               </Link>
               <button
-                onClick={() => {
-                  localStorage.removeItem('auth_token');
-                  window.location.href = '/';
-                }}
+                onClick={handleLogout}
                 className="nav-link logout-btn"
               >
                 Logout
