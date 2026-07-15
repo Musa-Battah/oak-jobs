@@ -24,7 +24,7 @@ interface ImportResult {
   updated: number;
   skipped: number;
   errors: number;
-  jobs: JobData[];
+  jobs: (JobData & { id: number })[];
 }
 
 // Parse CSV line with quoted values - handles quotes properly
@@ -54,7 +54,6 @@ export function parseCSVLine(line: string): string[] {
 export function parseCSV(csvContent: string): JobData[] {
   const jobs: JobData[] = [];
   
-  // Split by rows first
   const lines = csvContent.split('\n');
   
   if (lines.length < 2) {
@@ -62,7 +61,6 @@ export function parseCSV(csvContent: string): JobData[] {
     return jobs;
   }
 
-  // Find the header row
   let headerIndex = 0;
   let headers: string[] = [];
   
@@ -90,7 +88,6 @@ export function parseCSV(csvContent: string): JobData[] {
     console.log('⚠️ Using first line as header');
   }
   
-  // Column mapping
   const columnMap: Record<string, string> = {
     'post_title': 'title',
     'title': 'title',
@@ -133,7 +130,6 @@ export function parseCSV(csvContent: string): JobData[] {
     'job_description': 'content',
   };
 
-  // CRITICAL FIX: Properly parse CSV by handling quoted fields with newlines
   let currentRow = '';
   let inQuotedField = false;
   const dataRows: string[] = [];
@@ -147,16 +143,13 @@ export function parseCSV(csvContent: string): JobData[] {
       currentRow += '\n' + line;
     }
     
-    // Count quotes to see if we're in a quoted field
     const quoteCount = (line.match(/"/g) || []).length;
     if (quoteCount % 2 === 1) {
       inQuotedField = !inQuotedField;
     }
     
-    // If we're not in a quoted field and have a complete row
     if (!inQuotedField && currentRow.trim()) {
       const cols = parseCSVLine(currentRow);
-      // Only add if it looks like a data row (has at least 2 columns)
       if (cols.length >= 2) {
         dataRows.push(currentRow);
       }
@@ -164,7 +157,6 @@ export function parseCSV(csvContent: string): JobData[] {
     }
   }
   
-  // Add the last row if there is one
   if (currentRow.trim()) {
     const cols = parseCSVLine(currentRow);
     if (cols.length >= 2) {
@@ -196,26 +188,22 @@ export function parseCSV(csvContent: string): JobData[] {
 
       if (!hasValidData) continue;
 
-      // CRITICAL: Validate title - skip if no valid title
       const title = job.title || job.post_title || '';
       if (!title || title.length < 3) {
         continue;
       }
 
-      // Skip if title looks like a paragraph (too many words, likely not a job title)
       const wordCount = title.split(' ').length;
       if (wordCount > 30 && !title.includes(' at ') && !title.includes(' - ')) {
         console.log(`Skipping row: Title looks like paragraph (${wordCount} words)`);
         continue;
       }
 
-      // Handle company name
       if (!job.company_name) {
         if (job.company) job.company_name = job.company;
         else job.company_name = 'Unknown Organization';
       }
 
-      // Process job_category
       let categories: string[] = [];
       if (job.job_category) {
         if (Array.isArray(job.job_category)) {
@@ -239,7 +227,6 @@ export function parseCSV(csvContent: string): JobData[] {
       
       job.job_category = categories.length > 0 ? categories : ['General'];
 
-      // Process job_location
       let location = job.job_location || '';
       if (location) {
         location = location.replace(/^Remote\s*[|/]\s*/i, '');
@@ -258,7 +245,6 @@ export function parseCSV(csvContent: string): JobData[] {
       }
       job.job_location = location || 'Nigeria';
 
-      // Process job_type
       if (!job.job_type) {
         if (job.post_category) {
           const typeMap: Record<string, string> = {
@@ -273,7 +259,6 @@ export function parseCSV(csvContent: string): JobData[] {
         }
       }
 
-      // Clean application_url
       if (job.application_url) {
         job.application_url = job.application_url
           .replace(/\]\(.*?\)/, '')
@@ -287,7 +272,6 @@ export function parseCSV(csvContent: string): JobData[] {
         }
       }
 
-      // Clean content
       if (job.content) {
         job.content = job.content
           .replace(/At Impactpool we do our best.*/g, '')
@@ -299,7 +283,6 @@ export function parseCSV(csvContent: string): JobData[] {
           .trim();
       }
 
-      // Set defaults
       job.title = job.title || 'Untitled Position';
       job.company_name = job.company_name || 'Unknown Organization';
       job.job_location = job.job_location || 'Nigeria';
@@ -307,7 +290,6 @@ export function parseCSV(csvContent: string): JobData[] {
       job.content = job.content || '';
       job.job_category = job.job_category || ['General'];
 
-      // Clean job_expires date format
       if (job.job_expires) {
         try {
           const date = new Date(job.job_expires);
@@ -331,7 +313,7 @@ export function parseCSV(csvContent: string): JobData[] {
   return jobs;
 }
 
-// Import jobs into database
+// Import jobs into database - returns jobs with IDs
 export async function importJobs(jobs: JobData[]): Promise<ImportResult> {
   const result: ImportResult = {
     inserted: 0,
@@ -343,14 +325,12 @@ export async function importJobs(jobs: JobData[]): Promise<ImportResult> {
 
   for (const job of jobs) {
     try {
-      // Check if job exists (by title, company, location)
       const existing = await query(
         `SELECT id FROM jobs WHERE title = $1 AND company_name = $2 AND job_location = $3`,
         [job.title, job.company_name, job.job_location]
       );
 
       if (existing.rows.length > 0) {
-        // Update existing job
         await query(
           `UPDATE jobs SET 
             content = $1,
@@ -384,16 +364,19 @@ export async function importJobs(jobs: JobData[]): Promise<ImportResult> {
           ]
         );
         result.updated++;
-        result.jobs.push(job);
+        result.jobs.push({
+          ...job,
+          id: existing.rows[0].id,
+        });
       } else {
-        // Insert new job
-        await query(
+        const insertResult = await query(
           `INSERT INTO jobs (
             title, content, company_name, company_logo, company_tagline,
             job_location, job_type, job_salary, job_expires, job_category,
             required_qualifications, job_experience, skills_required,
             application_url, application_email
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+          RETURNING id`,
           [
             job.title,
             job.content,
@@ -413,7 +396,10 @@ export async function importJobs(jobs: JobData[]): Promise<ImportResult> {
           ]
         );
         result.inserted++;
-        result.jobs.push(job);
+        result.jobs.push({
+          ...job,
+          id: insertResult.rows[0].id,
+        });
       }
     } catch (error) {
       console.error('Error importing job:', job.title, error);
@@ -421,7 +407,6 @@ export async function importJobs(jobs: JobData[]): Promise<ImportResult> {
     }
   }
 
-  // Invalidate caches after import
   if (result.inserted > 0 || result.updated > 0) {
     cache.clear();
     console.log('🗑️ Cache cleared after import');

@@ -35,7 +35,7 @@ export default function Logo({ className = '', variant = 'default' }: LogoProps)
         {!imageError ? (
           <Image
             src="/logo.png"
-            alt="Oak Jobs"
+            alt="Oak Jobs - NGO Jobsite"
             width={width}
             height={height}
             className="logo-image"

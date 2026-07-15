@@ -55,7 +55,6 @@ export async function POST(request: NextRequest) {
 
       csvContent = await file.text();
     } else {
-      // For GitHub Actions, the body is the CSV content
       csvContent = await request.text();
     }
 
@@ -66,7 +65,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Parse CSV - the parser handles both manual uploads and automated imports
+    // 4. Parse CSV
     console.log(`📊 Parsing CSV content (${csvContent.length} bytes)...`);
     const jobs = parseCSV(csvContent);
     
@@ -104,23 +103,23 @@ export async function POST(request: NextRequest) {
           
           const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://oakjobs.online';
           
-          // Send individual job notification
-          await sendTelegramNotification({
-            title: `💼 New Job: ${title}`,
-            message: `
+          const message = `
 🏢 <b>Company:</b> ${company}
 📍 <b>Location:</b> ${location}
 📂 <b>Category:</b> ${category}
 
-🔗 <b>Apply:</b> <a href="${baseUrl}/jobs">View & Apply</a>
-            `,
-            url: `${baseUrl}/jobs`,
+🔗 <b>Apply:</b> <a href="${baseUrl}/jobs/${job.id}">View & Apply</a>
+          `;
+          
+          await sendTelegramNotification({
+            title: title,
+            message: message,
+            url: `${baseUrl}/jobs/${job.id}`,
             category: category,
           });
           
           successCount++;
           
-          // Small delay between messages to avoid rate limiting
           await new Promise(resolve => setTimeout(resolve, 300));
         } catch (error) {
           console.error('Failed to send Telegram notification for job:', job.title, error);

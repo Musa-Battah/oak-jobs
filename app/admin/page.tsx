@@ -17,6 +17,8 @@ export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [telegramStatus, setTelegramStatus] = useState<string>('');
   const [telegramLoading, setTelegramLoading] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<string>('');
+  const [emailLoading, setEmailLoading] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -82,6 +84,37 @@ export default function AdminDashboard() {
     }
   };
 
+  const testEmail = async () => {
+    setEmailLoading(true);
+    setEmailStatus('');
+    
+    try {
+      const token = localStorage.getItem('auth_token');
+      const email = 'admin@oakjobs.online';
+      
+      const response = await fetch('/api/email/test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ email }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setEmailStatus(`✅ Test email sent to ${email}`);
+      } else {
+        setEmailStatus('❌ ' + (data.error || 'Failed to send email'));
+      }
+    } catch (error) {
+      setEmailStatus('❌ Failed to send test email');
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
   if (isLoading) {
     return <div>Loading dashboard...</div>;
   }
@@ -134,18 +167,6 @@ export default function AdminDashboard() {
             </span>
           )}
         </div>
-        <div style={{ 
-          marginTop: '10px', 
-          padding: '10px', 
-          background: '#0a0a0a', 
-          borderRadius: '6px',
-          fontSize: '12px',
-          color: '#666',
-          fontFamily: 'monospace'
-        }}>
-          <p>Bot Token: {process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN ? '✅ Configured' : '❌ Not configured'}</p>
-          <p>Chat ID: {process.env.NEXT_PUBLIC_TELEGRAM_CHAT_ID ? '✅ Configured' : '❌ Not configured'}</p>
-        </div>
       </div>
 
       {/* Email Test Section */}
@@ -156,30 +177,37 @@ export default function AdminDashboard() {
         borderRadius: '12px', 
         border: '1px solid #333' 
       }}>
-        <h3 style={{ color: '#fff', marginBottom: '15px' }}>📧 Email Test</h3>
+        <h3 style={{ color: '#fff', marginBottom: '15px' }}>📧 Zoho Mail Test</h3>
         <p style={{ color: '#888', marginBottom: '15px' }}>Send a test email to verify Zoho Mail is working.</p>
-        <button 
-          onClick={async () => {
-            const token = localStorage.getItem('auth_token');
-            const response = await fetch('/api/email/test', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-              },
-              body: JSON.stringify({ email: 'admin@oakjobs.online' }),
-            });
-            const data = await response.json();
-            if (response.ok) {
-              alert('✅ Test email sent! Check your inbox.');
-            } else {
-              alert('❌ Failed to send: ' + data.error);
-            }
-          }}
-          className="admin-btn admin-btn-primary"
-        >
-          📤 Send Test Email
-        </button>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <button 
+            onClick={testEmail}
+            disabled={emailLoading}
+            className="admin-btn admin-btn-primary"
+          >
+            {emailLoading ? 'Sending...' : '📤 Send Test Email'}
+          </button>
+          {emailStatus && (
+            <span style={{ 
+              color: emailStatus.includes('✅') ? '#28a745' : '#dc3545',
+              fontSize: '0.95rem',
+            }}>
+              {emailStatus}
+            </span>
+          )}
+        </div>
+        <div style={{ 
+          marginTop: '10px', 
+          padding: '10px', 
+          background: '#0a0a0a', 
+          borderRadius: '6px',
+          fontSize: '12px',
+          color: '#666',
+          fontFamily: 'monospace'
+        }}>
+          <p>📧 Sending to: <span style={{ color: '#888' }}>admin@oakjobs.online</span></p>
+          <p>📤 SMTP Host: <span style={{ color: '#888' }}>{process.env.NEXT_PUBLIC_EMAIL_HOST || 'smtp.zoho.com'}</span></p>
+        </div>
       </div>
 
       <div style={{ marginTop: '30px' }}>

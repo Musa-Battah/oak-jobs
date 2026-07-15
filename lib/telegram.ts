@@ -12,10 +12,6 @@ interface TelegramResponse {
   error_code?: number;
 }
 
-/**
- * Send a notification to Telegram using a direct bot
- * No Make.com required!
- */
 export async function sendTelegramNotification(data: TelegramMessage): Promise<boolean> {
   try {
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
@@ -26,7 +22,6 @@ export async function sendTelegramNotification(data: TelegramMessage): Promise<b
       return false;
     }
 
-    // Format the message with HTML
     const message = formatTelegramMessage(data);
 
     const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -57,9 +52,6 @@ export async function sendTelegramNotification(data: TelegramMessage): Promise<b
   }
 }
 
-/**
- * Format the message with HTML styling for Telegram
- */
 function formatTelegramMessage(data: TelegramMessage): string {
   const timestamp = new Date().toLocaleString('en-NG', {
     timeZone: 'Africa/Lagos',
@@ -70,19 +62,16 @@ function formatTelegramMessage(data: TelegramMessage): string {
     minute: '2-digit',
   });
 
-  let message = `<b>${data.title}</b>\n\n`;
-  message += `${data.message}\n\n`;
-  message += `<b>🔗 View all jobs:</b> <a href="${data.url}">${data.url}</a>\n\n`;
-  message += `<b>📂 Category:</b> ${data.category || 'General'}\n`;
-  message += `<b>🕐 Time:</b> ${timestamp}\n\n`;
-  message += `<i>🚀 Powered by Oak Jobs</i>`;
+  let title = data.title;
+  title = title.replace(/^💼\s*New Job:\s*/, '');
+  
+  let message = `<b>${title}</b>\n\n`;
+  message += data.message;
+  message += `\n\n🕐 ${timestamp}`;
 
   return message;
 }
 
-/**
- * Send a simple text message to Telegram
- */
 export async function sendTelegramText(text: string): Promise<boolean> {
   try {
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
@@ -113,9 +102,6 @@ export async function sendTelegramText(text: string): Promise<boolean> {
   }
 }
 
-/**
- * Send a job listing to Telegram (for individual job posts)
- */
 export async function sendJobToTelegram(job: any): Promise<boolean> {
   try {
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
@@ -126,16 +112,13 @@ export async function sendJobToTelegram(job: any): Promise<boolean> {
     }
 
     const message = `
-<b>💼 New Job Posted!</b>
+<b>${job.title}</b>
 
-<b>📌 Title:</b> ${job.title}
-<b>🏢 Company:</b> ${job.company_name}
-<b>📍 Location:</b> ${job.job_location || 'N/A'}
-<b>💼 Type:</b> ${job.job_type || 'N/A'}
-${job.job_salary ? `<b>💰 Salary:</b> ${job.job_salary}` : ''}
-${job.job_category && job.job_category.length > 0 ? `<b>📂 Category:</b> ${job.job_category.join(', ')}` : ''}
+🏢 <b>Company:</b> ${job.company_name}
+📍 <b>Location:</b> ${job.job_location || 'N/A'}
+📂 <b>Category:</b> ${job.job_category && job.job_category.length > 0 ? job.job_category.join(', ') : 'General'}
 
-<b>🔗 Apply now:</b> <a href="${process.env.NEXT_PUBLIC_BASE_URL}/jobs/${job.id}">View Details</a>
+🔗 <b>Apply:</b> <a href="${process.env.NEXT_PUBLIC_BASE_URL}/jobs/${job.id}">View & Apply</a>
     `;
 
     const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -159,9 +142,6 @@ ${job.job_category && job.job_category.length > 0 ? `<b>📂 Category:</b> ${job
   }
 }
 
-/**
- * Test the Telegram bot connection
- */
 export async function testTelegramBot(): Promise<{ success: boolean; message: string }> {
   try {
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
@@ -174,7 +154,6 @@ export async function testTelegramBot(): Promise<{ success: boolean; message: st
       };
     }
 
-    // Test 1: Check bot info
     const botInfoResponse = await fetch(`https://api.telegram.org/bot${botToken}/getMe`);
     const botInfo = await botInfoResponse.json();
 
@@ -185,7 +164,6 @@ export async function testTelegramBot(): Promise<{ success: boolean; message: st
       };
     }
 
-    // Test 2: Send test message
     const testMessage = `
 <b>✅ Telegram Bot Test Successful!</b>
 
