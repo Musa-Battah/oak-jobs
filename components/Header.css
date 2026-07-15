@@ -19,7 +19,7 @@
   padding: 0 24px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   min-height: 70px;
 }
 
@@ -28,16 +28,13 @@
   align-items: center;
   gap: 2rem;
   flex-wrap: wrap;
-  width: 100%;
+  justify-content: center;
 }
 
-/* Logo styles */
 .logo-link {
   display: flex;
   align-items: center;
-  gap: 10px;
   text-decoration: none;
-  margin-right: auto;
 }
 
 .logo-link:hover {
@@ -53,13 +50,6 @@
 
 .logo-image {
   border-radius: 8px;
-}
-
-.logo-text {
-  font-weight: 700;
-  color: #000000;
-  font-family: 'Playpen Sans', 'Inter', 'Segoe UI', sans-serif;
-  letter-spacing: -0.5px;
 }
 
 .nav-link {
@@ -95,7 +85,6 @@
   color: #a71d2a;
 }
 
-/* Mobile responsive */
 @media (max-width: 680px) {
   .header-container {
     padding: 0 20px;
@@ -106,9 +95,6 @@
   }
   .nav-link {
     font-size: 0.9rem;
-  }
-  .logo-text {
-    font-size: 1rem !important;
   }
 }
 
@@ -122,9 +108,6 @@
   }
   .nav-link {
     font-size: 0.85rem;
-  }
-  .logo-text {
-    font-size: 0.9rem !important;
   }
   .logo-image-wrapper {
     width: 28px !important;

@@ -20,10 +20,11 @@ export const metadata: Metadata = {
   description: "Discover your next career opportunity with Oak Jobs",
   icons: {
     icon: [
-      { url: '/images/Oak Jobs-logo.png', type: 'image/png' },
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/logo.png', type: 'image/png' },
     ],
     apple: [
-      { url: '/images/Oak Jobs-logo.png', type: 'image/png' },
+      { url: '/logo.png', type: 'image/png' },
     ],
   },
 };

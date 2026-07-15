@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
 
       csvContent = await file.text();
     } else {
+      // For GitHub Actions, the body is the CSV content
       csvContent = await request.text();
     }
 
@@ -65,8 +66,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Parse CSV
+    // 4. Parse CSV - the parser handles both manual uploads and automated imports
+    console.log(`📊 Parsing CSV content (${csvContent.length} bytes)...`);
     const jobs = parseCSV(csvContent);
+    
+    console.log(`📊 Parsed ${jobs.length} jobs from CSV`);
+    
     if (jobs.length === 0) {
       return NextResponse.json({
         success: true,
@@ -82,21 +87,47 @@ export async function POST(request: NextRequest) {
     // 5. Import jobs
     const result = await importJobs(jobs);
 
-    // 6. Send Telegram notification (only if new jobs were inserted)
+    // 6. Send Telegram notification - INDIVIDUAL messages for each new job
     if (result.inserted > 0) {
-      // Get the first 5 jobs for the message
-      const jobList = result.jobs.slice(0, 5).map(j => 
-        `• <b>${j.title}</b> at ${j.company_name} (${j.job_location})`
-      ).join('\n');
+      console.log(`📱 Sending ${result.inserted} individual Telegram notifications...`);
       
-      const moreJobs = result.inserted > 5 ? `\n... and ${result.inserted - 5} more` : '';
+      let successCount = 0;
       
-      await sendTelegramNotification({
-        title: `📢 ${result.inserted} New Jobs Added!`,
-        message: `${jobList}${moreJobs}`,
-        url: process.env.NEXT_PUBLIC_BASE_URL || 'https://oakjobs.online',
-        category: 'CSV Import',
-      });
+      for (const job of result.jobs) {
+        try {
+          const title = job.title || 'Untitled Position';
+          const company = job.company_name || 'Unknown Organization';
+          const location = job.job_location || 'N/A';
+          const category = job.job_category && job.job_category.length > 0 
+            ? job.job_category[0] 
+            : 'General';
+          
+          const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://oakjobs.online';
+          
+          // Send individual job notification
+          await sendTelegramNotification({
+            title: `💼 New Job: ${title}`,
+            message: `
+🏢 <b>Company:</b> ${company}
+📍 <b>Location:</b> ${location}
+📂 <b>Category:</b> ${category}
+
+🔗 <b>Apply:</b> <a href="${baseUrl}/jobs">View & Apply</a>
+            `,
+            url: `${baseUrl}/jobs`,
+            category: category,
+          });
+          
+          successCount++;
+          
+          // Small delay between messages to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 300));
+        } catch (error) {
+          console.error('Failed to send Telegram notification for job:', job.title, error);
+        }
+      }
+      
+      console.log(`✅ Sent ${successCount}/${result.inserted} individual Telegram notifications`);
     }
 
     // 7. Return response

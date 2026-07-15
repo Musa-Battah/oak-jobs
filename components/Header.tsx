@@ -12,7 +12,6 @@ export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
 
-  // Check auth status
   const checkAuth = () => {
     const token = localStorage.getItem('auth_token');
     const newIsLoggedIn = !!token;
@@ -26,7 +25,6 @@ export default function Header() {
   useEffect(() => {
     checkAuth();
 
-    // Listen for storage changes (when login happens in another tab)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'auth_token') {
         checkAuth();
@@ -35,7 +33,6 @@ export default function Header() {
 
     window.addEventListener('storage', handleStorageChange);
 
-    // Listen for custom event (for same-tab login)
     const handleAuthChange = () => {
       checkAuth();
     };
@@ -48,7 +45,6 @@ export default function Header() {
     };
   }, [isLoggedIn]);
 
-  // Re-check auth when route changes (for login redirects)
   useEffect(() => {
     checkAuth();
   }, [pathname]);
@@ -75,7 +71,7 @@ export default function Header() {
     <header className="site-header">
       <div className="header-container">
         <nav className="main-nav" aria-label="Primary navigation">
-          <Logo variant="default" showText={true} />
+          <Logo variant="default" />
 
           <Link href="/" className="nav-link home-link">
             Home
