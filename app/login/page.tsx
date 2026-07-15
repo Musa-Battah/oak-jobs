@@ -5,11 +5,11 @@ import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-// Component that uses useSearchParams - must be wrapped in Suspense
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') || '/';
+  const message = searchParams.get('message') || '';
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -33,21 +33,14 @@ function LoginContent() {
       const data = await response.json();
 
       if (response.ok) {
-        // Store token
         localStorage.setItem('auth_token', data.token);
-        
-        // Dispatch custom event for Header to update
         window.dispatchEvent(new CustomEvent('authChange'));
-        
-        // Also trigger storage event for other tabs
         window.dispatchEvent(new StorageEvent('storage', {
           key: 'auth_token',
           newValue: data.token,
         }));
-        
-        // Redirect
         router.push(redirect);
-        router.refresh(); // Force refresh to update server components
+        router.refresh();
       } else {
         setError(data.error || 'Login failed. Please try again.');
       }
@@ -62,6 +55,18 @@ function LoginContent() {
     <div className="auth-form">
       <h1>Login</h1>
       <p className="subtitle">Welcome back to Oak Jobs</p>
+
+      {message && (
+        <div style={{ 
+          background: 'rgba(40, 167, 69, 0.2)', 
+          color: '#28a745', 
+          padding: '12px', 
+          borderRadius: '6px', 
+          marginBottom: '20px' 
+        }}>
+          {message}
+        </div>
+      )}
 
       {error && (
         <div style={{ 
@@ -98,6 +103,12 @@ function LoginContent() {
           />
         </div>
 
+        <div style={{ textAlign: 'right', marginBottom: '20px' }}>
+          <Link href="/reset-password" style={{ color: '#888', fontSize: '0.9rem', textDecoration: 'underline' }}>
+            Forgot Password?
+          </Link>
+        </div>
+
         <button
           type="submit"
           disabled={isLoading}
@@ -114,7 +125,6 @@ function LoginContent() {
   );
 }
 
-// Main page component with Suspense
 export default function LoginPage() {
   return (
     <Suspense fallback={

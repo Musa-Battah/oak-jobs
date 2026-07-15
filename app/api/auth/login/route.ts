@@ -21,6 +21,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if account is activated
+    if (!user.is_active) {
+      return NextResponse.json(
+        { error: 'Please activate your account first. Check your email for the activation link.' },
+        { status: 401 }
+      );
+    }
+
     const isValid = await verifyPassword(password, user.password_hash);
     if (!isValid) {
       return NextResponse.json(
@@ -38,6 +46,7 @@ export async function POST(request: NextRequest) {
         email: user.email,
         username: user.username,
         display_name: user.display_name,
+        is_active: user.is_active,
       },
     });
   } catch (error) {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { findUserByEmail, findUserByUsername, createUser } from '@/lib/auth';
-import { sendEmail, getWelcomeEmail } from '@/lib/email';
+import { findUserByEmail, findUserByUsername, createUser, generateActivationToken } from '@/lib/auth';
+import { sendEmail, getActivationEmail, getAdminNotificationEmail } from '@/lib/email';
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,7 +21,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if email already exists
     const existingEmail = await findUserByEmail(email);
     if (existingEmail) {
       return NextResponse.json(
@@ -30,7 +29,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if username already exists
     const existingUsername = await findUserByUsername(username);
     if (existingUsername) {
       return NextResponse.json(
@@ -39,7 +37,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create user (always as non-admin)
     const user = await createUser(email, username, password);
     if (!user) {
       return NextResponse.json(
@@ -48,27 +45,48 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Send welcome email
+    // Generate activation token
+    const activationToken = generateActivationToken(user.id, user.email);
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://oakjobs.online';
+    
+    const activationLink = `${baseUrl}/activate?token=${activationToken}`;
+    const pdfLink = `${baseUrl}/downloads/NGO_Insider_Report_2026.pdf`;
+    const telegramLink = 'https://t.me/oakjobs';
+
+    // Send activation email
     try {
-      const welcomeEmail = getWelcomeEmail(username, username);
+      const activationEmail = getActivationEmail(username, activationLink, pdfLink, telegramLink);
       await sendEmail({
         to: email,
-        subject: welcomeEmail.subject,
-        html: welcomeEmail.html,
+        subject: activationEmail.subject,
+        html: activationEmail.html,
       });
-      console.log('✅ Welcome email sent to:', email);
+      console.log('Activation email sent to:', email);
     } catch (emailError) {
-      console.error('⚠️ Failed to send welcome email:', emailError);
-      // Don't fail registration if email fails
+      console.error('Failed to send activation email:', emailError);
+    }
+
+    // Send admin notification
+    try {
+      const adminEmail = getAdminNotificationEmail(username, email);
+      await sendEmail({
+        to: process.env.EMAIL_TO || 'admin@oakjobs.online',
+        subject: adminEmail.subject,
+        html: adminEmail.html,
+      });
+      console.log('Admin notification sent for:', email);
+    } catch (emailError) {
+      console.error('Failed to send admin notification:', emailError);
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Registration successful! Please login.',
+      message: 'Registration successful! Please check your email to activate your account.',
       user: {
         id: user.id,
         email: user.email,
         username: user.username,
+        is_active: user.is_active,
       },
     });
   } catch (error) {
