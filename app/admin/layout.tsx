@@ -1,51 +1,105 @@
-import type { Metadata } from "next";
-import { Inter, Playpen_Sans } from "next/font/google";
-import "./globals.css";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
+'use client';
 
-const inter = Inter({ 
-  subsets: ["latin"],
-  variable: '--font-inter',
-});
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import '../globals.css'; // Import from app root
+import './admin.css';
 
-const playpenSans = Playpen_Sans({ 
-  subsets: ["latin"],
-  weight: ["100", "200", "300", "400", "500", "600", "700", "800"],
-  variable: '--font-playpen-sans',
-  display: 'swap',
-});
-
-export const metadata: Metadata = {
-  title: "Oak Jobs - NGO Jobsite",
-  description: "Find your next NGO career opportunity with Oak Jobs - Nigeria's leading NGO job board",
-  icons: {
-    icon: [
-      { url: '/favicon.ico', sizes: 'any' },
-      { url: '/logo.png', type: 'image/png' },
-    ],
-    apple: [
-      { url: '/logo.png', type: 'image/png' },
-    ],
-  },
-};
-
-export default function RootLayout({
+export default function AdminLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      router.push('/login?redirect=/admin');
+      return;
+    }
+    setIsLoading(false);
+  }, [router]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('auth_token');
+    router.push('/login');
+  };
+
+  if (isLoading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '100vh',
+        background: '#000',
+        color: '#fff'
+      }}>
+        Loading...
+      </div>
+    );
+  }
+
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body 
-        className={`${playpenSans.variable} ${inter.variable}`}
-        suppressHydrationWarning
-        style={{ fontFamily: 'var(--font-playpen-sans), "Inter", "Segoe UI", sans-serif' }}
-      >
-        <Header />
-        <main>{children}</main>
-        <Footer />
-      </body>
-    </html>
+    <div className="admin-layout">
+      <aside className="admin-sidebar">
+        <div className="admin-brand">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Image
+              src="/logo.png"
+              alt="Oak Jobs"
+              width={32}
+              height={32}
+              style={{ objectFit: 'contain' }}
+            />
+            <h2>⚡ Oak Admin</h2>
+          </div>
+        </div>
+        <nav className="admin-nav">
+          <Link href="/admin" className="admin-nav-link">
+            📊 Dashboard
+          </Link>
+          <Link href="/admin/jobs" className="admin-nav-link">
+            💼 Jobs
+          </Link>
+          <Link href="/admin/jobs/add" className="admin-nav-link">
+            ➕ Add Job
+          </Link>
+          <Link href="/admin/categories" className="admin-nav-link">
+            📂 Categories
+          </Link>
+          <Link href="/admin/users" className="admin-nav-link">
+            👥 Users
+          </Link>
+          <Link href="/admin/import" className="admin-nav-link">
+            📥 Import Jobs
+          </Link>
+          <Link href="/" className="admin-nav-link" style={{ marginTop: 'auto', borderTop: '1px solid #333' }}>
+            🔙 Back to Site
+          </Link>
+        </nav>
+      </aside>
+      <main className="admin-content">
+        <div className="admin-header">
+          <h1>Dashboard</h1>
+          <div className="admin-user">
+            <span>👤 Admin</span>
+            <button 
+              onClick={handleLogout}
+              className="admin-logout-btn"
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+        <div className="admin-body">
+          {children}
+        </div>
+      </main>
+    </div>
   );
 }
