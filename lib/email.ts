@@ -36,7 +36,7 @@ async function getAccessToken(): Promise<string> {
       cachedAccessToken = data.access_token;
       tokenExpiry = Date.now() + (data.expires_in || 3600) * 1000;
       console.log('✅ Zoho token refreshed successfully');
-      return cachedAccessToken;
+      return cachedAccessToken; // cachedAccessToken is now guaranteed to be a string
     }
     
     throw new Error('Failed to get access token');
