@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { activateUser } from '@/lib/auth';
+import { activateUser, generateToken } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,13 +22,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Generate JWT token for auto-login
+    const jwtToken = generateToken(result.user!);
+
     return NextResponse.json({
       success: true,
       message: 'Account activated successfully!',
+      token: jwtToken,
       user: {
         id: result.user?.id,
         email: result.user?.email,
         username: result.user?.username,
+        is_active: result.user?.is_active,
+        is_admin: result.user?.is_admin,
       },
     });
   } catch (error) {

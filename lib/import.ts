@@ -166,6 +166,20 @@ export function parseCSV(csvContent: string): JobData[] {
   
   console.log(`📊 Found ${dataRows.length} data rows in CSV`);
 
+  // Valid job categories (excluding generic/meaningless ones)
+  const validCategories = [
+    'Healthcare', 'Technology', 'Management', 'Administration', 'Finance', 
+    'Consultancy', 'Research', 'Environment', 'Development', 'Education',
+    'Human Resources', 'Marketing', 'Sales', 'Engineering', 'Legal',
+    'Monitoring and Evaluation', 'Program/Project Management', 'Humanitarian',
+    'WASH', 'Nutrition', 'Health', 'Protection', 'Logistics', 'Operations',
+    'Communications', 'Media', 'IT', 'Data', 'Analytics', 'Policy',
+    'Agriculture', 'Food Security', 'Shelter', 'Construction'
+  ];
+
+  // Invalid categories to skip/filter out
+  const invalidCategories = ['job', 'jobs', 'general', 'other', 'uncategorized', ''];
+
   for (const row of dataRows) {
     try {
       const values = parseCSVLine(row);
@@ -204,29 +218,104 @@ export function parseCSV(csvContent: string): JobData[] {
         else job.company_name = 'Unknown Organization';
       }
 
+      // Process job_category - clean and filter invalid categories
       let categories: string[] = [];
       if (job.job_category) {
         if (Array.isArray(job.job_category)) {
           categories = job.job_category;
         } else if (typeof job.job_category === 'string') {
+          // Try pipe separator first (Impactpool)
           if (job.job_category.includes('|')) {
             categories = job.job_category.split('|').map((c: string) => c.trim());
-          } else if (job.job_category.includes(',')) {
+          } 
+          // Try comma separator (ReliefWeb)
+          else if (job.job_category.includes(',')) {
             categories = job.job_category.split(',').map((c: string) => c.trim());
-          } else {
+          } 
+          // Single category
+          else {
             categories = [job.job_category.trim()];
           }
         }
       }
       
+      // If no categories, try post_tag (Impactpool) or post_category (ReliefWeb)
       if (categories.length === 0 && job.post_tag) {
         if (typeof job.post_tag === 'string') {
           categories = job.post_tag.split(',').map((c: string) => c.trim());
         }
       }
       
-      job.job_category = categories.length > 0 ? categories : ['General'];
+      if (categories.length === 0 && job.post_category) {
+        if (typeof job.post_category === 'string' && job.post_category !== 'job') {
+          categories = [job.post_category.trim()];
+        }
+      }
+      
+      // Filter out invalid categories
+      categories = categories
+        .map(c => {
+          // Capitalize first letter
+          return c.charAt(0).toUpperCase() + c.slice(1).toLowerCase();
+        })
+        .filter(c => {
+          // Remove invalid/generic categories
+          const lower = c.toLowerCase();
+          if (invalidCategories.includes(lower)) {
+            console.log(`📝 Filtered out invalid category: "${c}"`);
+            return false;
+          }
+          return true;
+        })
+        // Try to map to known valid categories
+        .map(c => {
+          const lower = c.toLowerCase();
+          // Check if this category matches any valid category (case-insensitive)
+          for (const valid of validCategories) {
+            if (valid.toLowerCase() === lower) {
+              return valid;
+            }
+          }
+          // If it's a close match, use it
+          for (const valid of validCategories) {
+            if (valid.toLowerCase().includes(lower) || lower.includes(valid.toLowerCase())) {
+              return valid;
+            }
+          }
+          return c;
+        });
+      
+      // If no valid categories, try to determine from title
+      if (categories.length === 0) {
+        const titleLower = title.toLowerCase();
+        if (titleLower.includes('health') || titleLower.includes('nutrition') || titleLower.includes('medical')) {
+          categories = ['Healthcare'];
+        } else if (titleLower.includes('tech') || titleLower.includes('software') || titleLower.includes('it')) {
+          categories = ['Technology'];
+        } else if (titleLower.includes('manage') || titleLower.includes('director') || titleLower.includes('coordinator')) {
+          categories = ['Management'];
+        } else if (titleLower.includes('consult') || titleLower.includes('advisor')) {
+          categories = ['Consultancy'];
+        } else if (titleLower.includes('admin') || titleLower.includes('hr') || titleLower.includes('human resources')) {
+          categories = ['Administration'];
+        } else if (titleLower.includes('finance') || titleLower.includes('account')) {
+          categories = ['Finance'];
+        } else if (titleLower.includes('educate') || titleLower.includes('teach') || titleLower.includes('training')) {
+          categories = ['Education'];
+        } else if (titleLower.includes('research') || titleLower.includes('analyst')) {
+          categories = ['Research'];
+        } else if (titleLower.includes('environment') || titleLower.includes('climate')) {
+          categories = ['Environment'];
+        } else if (titleLower.includes('develop') || titleLower.includes('humanitarian') || titleLower.includes('relief')) {
+          categories = ['Development'];
+        } else {
+          categories = ['General'];
+        }
+      }
+      
+      job.job_category = categories;
 
+      // Process job_location
       let location = job.job_location || '';
       if (location) {
         location = location.replace(/^Remote\s*[|/]\s*/i, '');
@@ -245,6 +334,7 @@ export function parseCSV(csvContent: string): JobData[] {
       }
       job.job_location = location || 'Nigeria';
 
+      // Process job_type
       if (!job.job_type) {
         if (job.post_category) {
           const typeMap: Record<string, string> = {
@@ -259,6 +349,7 @@ export function parseCSV(csvContent: string): JobData[] {
         }
       }
 
+      // Clean application_url
       if (job.application_url) {
         job.application_url = job.application_url
           .replace(/\]\(.*?\)/, '')
@@ -272,6 +363,7 @@ export function parseCSV(csvContent: string): JobData[] {
         }
       }
 
+      // Clean content
       if (job.content) {
         job.content = job.content
           .replace(/At Impactpool we do our best.*/g, '')
@@ -283,6 +375,7 @@ export function parseCSV(csvContent: string): JobData[] {
           .trim();
       }
 
+      // Set defaults
       job.title = job.title || 'Untitled Position';
       job.company_name = job.company_name || 'Unknown Organization';
       job.job_location = job.job_location || 'Nigeria';
@@ -290,6 +383,7 @@ export function parseCSV(csvContent: string): JobData[] {
       job.content = job.content || '';
       job.job_category = job.job_category || ['General'];
 
+      // Clean job_expires date format
       if (job.job_expires) {
         try {
           const date = new Date(job.job_expires);

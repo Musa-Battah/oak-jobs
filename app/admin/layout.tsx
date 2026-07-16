@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import '../globals.css'; // Import from app root
+import '../globals.css';
 import './admin.css';
 
 export default function AdminLayout({
@@ -17,15 +17,49 @@ export default function AdminLayout({
 
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
+    const userData = localStorage.getItem('user_data');
+    
     if (!token) {
       router.push('/login?redirect=/admin');
       return;
     }
+
+    // Check if user is admin
+    if (userData) {
+      try {
+        const user = JSON.parse(userData);
+        if (!user.is_admin) {
+          router.push('/');
+          return;
+        }
+      } catch {
+        router.push('/login?redirect=/admin');
+        return;
+      }
+    } else {
+      // If no user data, fetch it
+      fetch('/api/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (!data.is_admin) {
+          router.push('/');
+        }
+      })
+      .catch(() => {
+        router.push('/login?redirect=/admin');
+      });
+    }
+
     setIsLoading(false);
   }, [router]);
 
   const handleLogout = () => {
     localStorage.removeItem('auth_token');
+    localStorage.removeItem('user_data');
     router.push('/login');
   };
 

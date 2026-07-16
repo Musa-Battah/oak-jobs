@@ -25,13 +25,24 @@ function ActivationContent() {
         const data = await response.json();
 
         if (response.ok) {
-          setStatus('success');
-          setMessage('Your account has been activated successfully!');
+          // Store token and user data
+          localStorage.setItem('auth_token', data.token);
+          localStorage.setItem('user_data', JSON.stringify(data.user));
           
-          // Redirect to complete profile after 3 seconds
+          // Dispatch auth events for header update
+          window.dispatchEvent(new CustomEvent('authChange'));
+          window.dispatchEvent(new StorageEvent('storage', {
+            key: 'auth_token',
+            newValue: data.token,
+          }));
+
+          setStatus('success');
+          setMessage('Your account has been activated and you are now logged in!');
+          
+          // Redirect to home page after 2 seconds
           setTimeout(() => {
-            router.push('/complete-profile');
-          }, 3000);
+            router.push('/');
+          }, 2000);
         } else {
           setStatus('error');
           setMessage(data.error || 'Activation failed. The link may be expired or invalid.');
@@ -69,7 +80,7 @@ function ActivationContent() {
           <h2 style={{ color: '#28a745', marginBottom: '10px' }}>Account Activated!</h2>
           <p style={{ color: '#cccccc' }}>{message}</p>
           <p style={{ color: '#888888', marginTop: '15px', fontSize: '14px' }}>
-            Redirecting you to complete your profile...
+            Redirecting you to the homepage...
           </p>
         </>
       )}

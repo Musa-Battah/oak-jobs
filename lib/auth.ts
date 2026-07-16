@@ -31,7 +31,7 @@ export async function findUserById(id: number): Promise<User | null> {
 export async function createUser(email: string, username: string, password: string): Promise<User | null> {
   const hashedPassword = await hashPassword(password);
   const result = await query(
-    'INSERT INTO users (email, username, password_hash, is_active) VALUES ($1, $2, $3, false) RETURNING *',
+    'INSERT INTO users (email, username, password_hash, is_active, is_admin) VALUES ($1, $2, $3, false, false) RETURNING *',
     [email, username, hashedPassword]
   );
   return result.rows[0] || null;
@@ -39,7 +39,7 @@ export async function createUser(email: string, username: string, password: stri
 
 export function generateToken(user: User): string {
   return jwt.sign(
-    { id: user.id, email: user.email, username: user.username },
+    { id: user.id, email: user.email, username: user.username, is_admin: user.is_admin },
     JWT_SECRET,
     { expiresIn: '7d' }
   );

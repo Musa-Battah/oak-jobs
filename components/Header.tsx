@@ -8,17 +8,29 @@ import './Header.css';
 
 export default function Header() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const pathname = usePathname();
   const router = useRouter();
 
   const checkAuth = () => {
     const token = localStorage.getItem('auth_token');
-    const newIsLoggedIn = !!token;
+    const userData = localStorage.getItem('user_data');
     
-    if (newIsLoggedIn !== isLoggedIn) {
-      setIsLoggedIn(newIsLoggedIn);
+    const newIsLoggedIn = !!token;
+    setIsLoggedIn(newIsLoggedIn);
+
+    if (userData) {
+      try {
+        const user = JSON.parse(userData);
+        setIsAdmin(user.is_admin === true);
+      } catch {
+        setIsAdmin(false);
+      }
+    } else {
+      setIsAdmin(false);
     }
+    
     setIsLoading(false);
   };
 
@@ -26,7 +38,7 @@ export default function Header() {
     checkAuth();
 
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'auth_token') {
+      if (e.key === 'auth_token' || e.key === 'user_data') {
         checkAuth();
       }
     };
@@ -43,7 +55,7 @@ export default function Header() {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('authChange', handleAuthChange);
     };
-  }, [isLoggedIn]);
+  }, []);
 
   useEffect(() => {
     checkAuth();
@@ -51,7 +63,9 @@ export default function Header() {
 
   const handleLogout = () => {
     localStorage.removeItem('auth_token');
+    localStorage.removeItem('user_data');
     setIsLoggedIn(false);
+    setIsAdmin(false);
     router.push('/');
   };
 
@@ -88,9 +102,11 @@ export default function Header() {
               <Link href="/complete-profile" className="nav-link logged-in-only">
                 Update Profile
               </Link>
-              <Link href="/admin" className="nav-link logged-in-only" style={{ color: '#4169E1' }}>
-                ⚡ Admin
-              </Link>
+              {isAdmin && (
+                <Link href="/admin" className="nav-link logged-in-only" style={{ color: '#4169E1' }}>
+                  ⚡ Admin
+                </Link>
+              )}
               <button
                 onClick={handleLogout}
                 className="nav-link logout-btn"

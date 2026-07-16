@@ -5,6 +5,7 @@ export interface User {
   display_name?: string;
   password_hash: string;
   is_active: boolean;
+  is_admin: boolean;
   activation_token?: string;
   activation_token_expires?: Date;
   reset_password_token?: string;
