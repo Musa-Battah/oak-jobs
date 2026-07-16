@@ -1,55 +1,109 @@
-import nodemailer from 'nodemailer';
-
-const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST || 'smtp.zoho.com',
-  port: parseInt(process.env.EMAIL_PORT || '587'),
-  secure: process.env.EMAIL_SECURE === 'true',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-  tls: {
-    rejectUnauthorized: false,
-  },
-});
-
+// Zoho Mail API with Auto-Refresh
 interface EmailOptions {
   to: string | string[];
   subject: string;
   html?: string;
   text?: string;
   from?: string;
-  cc?: string | string[];
-  bcc?: string | string[];
-  attachments?: Array<{
-    filename: string;
-    content?: string | Buffer;
-    path?: string;
-    contentType?: string;
-  }>;
+}
+
+let cachedAccessToken: string | null = null;
+let tokenExpiry: number = 0;
+
+async function getAccessToken(): Promise<string> {
+  // If we have a cached token that's still valid, use it
+  if (cachedAccessToken && Date.now() < tokenExpiry) {
+    return cachedAccessToken;
+  }
+
+  try {
+    const response = await fetch('https://accounts.zoho.com/oauth/v2/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        refresh_token: process.env.ZOHO_REFRESH_TOKEN!,
+        client_id: process.env.ZOHO_CLIENT_ID!,
+        client_secret: process.env.ZOHO_CLIENT_SECRET!,
+        grant_type: 'refresh_token',
+      }),
+    });
+
+    const data = await response.json();
+    
+    if (data.access_token) {
+      cachedAccessToken = data.access_token;
+      tokenExpiry = Date.now() + (data.expires_in || 3600) * 1000;
+      console.log('✅ Zoho token refreshed successfully');
+      return cachedAccessToken;
+    }
+    
+    throw new Error('Failed to get access token');
+  } catch (error) {
+    console.error('❌ Failed to refresh Zoho token:', error);
+    throw error;
+  }
 }
 
 export async function sendEmail(options: EmailOptions) {
   try {
     const from = options.from || process.env.EMAIL_FROM || 'admin@oakjobs.online';
-    
-    const mailOptions = {
-      from,
-      to: options.to,
-      subject: options.subject,
-      html: options.html,
-      text: options.text,
-      cc: options.cc,
-      bcc: options.bcc,
-      attachments: options.attachments,
-    };
+    const accountId = process.env.ZOHO_ACCOUNT_ID;
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Email sent:', info.messageId);
-    return { success: true, messageId: info.messageId };
+    if (!accountId) {
+      console.error('❌ Zoho Account ID missing');
+      return { success: false, error: 'Zoho Account ID missing' };
+    }
+
+    // Get fresh access token
+    const accessToken = await getAccessToken();
+
+    const toAddresses = Array.isArray(options.to) ? options.to : [options.to];
+
+    console.log('📧 Sending via Zoho API...');
+    console.log('   From:', from);
+    console.log('   To:', toAddresses.join(', '));
+    console.log('   Subject:', options.subject);
+
+    const response = await fetch(
+      `https://mail.zoho.com/api/accounts/${accountId}/messages`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Zoho-oauthtoken ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fromAddress: from,
+          toAddress: toAddresses.join(','),
+          subject: options.subject,
+          content: options.html || options.text || '',
+          mailFormat: options.html ? 'html' : 'plaintext',
+        }),
+      }
+    );
+
+    const responseText = await response.text();
+
+    if (!response.ok) {
+      console.error('❌ Zoho API error:', response.status);
+      console.error('   Response:', responseText);
+      return { success: false, error: `API error: ${response.status}` };
+    }
+
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch {
+      data = { success: true };
+    }
+
+    console.log('✅ Email sent via Zoho API');
+    return { success: true, messageId: data?.data?.messageId || 'unknown' };
   } catch (error) {
-    console.error('Email failed:', error);
-    throw error;
+    console.error('❌ Email API failed:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
 
@@ -65,7 +119,7 @@ export function getActivationEmail(name: string, activationLink: string, pdfLink
   <title>Activate Your Oak Jobs Account</title>
   <style>
     body { font-family: Arial, Helvetica, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f4; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .container { max-width: 600px; margin: 20px auto; padding: 20px; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
     .header { text-align: center; padding: 20px 0; border-bottom: 2px solid #4169E1; }
     .header img { max-width: 60px; height: auto; }
     .header h1 { color: #4169E1; font-size: 24px; margin: 10px 0 0 0; }
@@ -81,7 +135,6 @@ export function getActivationEmail(name: string, activationLink: string, pdfLink
     .divider { border: none; border-top: 1px solid #e0e0e0; margin: 25px 0; }
     .footer { text-align: center; padding: 20px 0; border-top: 1px solid #e0e0e0; font-size: 12px; color: #888888; }
     .footer a { color: #4169E1; text-decoration: none; }
-    .highlight { color: #4169E1; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -136,6 +189,45 @@ export function getActivationEmail(name: string, activationLink: string, pdfLink
   };
 }
 
+export function getAdminNotificationEmail(name: string, email: string) {
+  return {
+    subject: 'New User Registration - Oak Jobs',
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>New User Registration</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; line-height: 1.6; color: #333333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; border-radius: 8px; }
+    .header { background: #4169E1; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+    .content { padding: 20px; background: #ffffff; border-radius: 0 0 8px 8px; }
+    .info { background: #f4f4f4; padding: 15px; border-radius: 4px; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>New User Registration</h1>
+    </div>
+    <div class="content">
+      <p>A new user has registered on Oak Jobs.</p>
+      <div class="info">
+        <p><strong>Name:</strong> ${name}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+      </div>
+      <p>Log in to the admin panel to view more details.</p>
+      <p><a href="https://oakjobs.online/admin">https://oakjobs.online/admin</a></p>
+    </div>
+  </div>
+</body>
+</html>
+    `
+  };
+}
+
 export function getPasswordResetEmail(name: string, resetLink: string) {
   return {
     subject: 'Reset Your Oak Jobs Password',
@@ -148,7 +240,7 @@ export function getPasswordResetEmail(name: string, resetLink: string) {
   <title>Reset Your Password</title>
   <style>
     body { font-family: Arial, Helvetica, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f4f4f4; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .container { max-width: 600px; margin: 20px auto; padding: 20px; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
     .header { text-align: center; padding: 20px 0; border-bottom: 2px solid #4169E1; }
     .header img { max-width: 60px; height: auto; }
     .header h1 { color: #4169E1; font-size: 24px; margin: 10px 0 0 0; }
@@ -187,45 +279,6 @@ export function getPasswordResetEmail(name: string, resetLink: string) {
       <p>&copy; 2026 Oak Jobs. All rights reserved.</p>
       <p><a href="https://oakjobs.online">oakjobs.online</a> | <a href="https://t.me/oakjobs">Telegram</a></p>
       <p style="margin-top: 10px; font-size: 11px;">Oak Jobs - NGO Jobsite</p>
-    </div>
-  </div>
-</body>
-</html>
-    `
-  };
-}
-
-export function getAdminNotificationEmail(name: string, email: string) {
-  return {
-    subject: 'New User Registration - Oak Jobs',
-    html: `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>New User Registration</title>
-  <style>
-    body { font-family: Arial, Helvetica, sans-serif; line-height: 1.6; color: #333333; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; border-radius: 8px; }
-    .header { background: #4169E1; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-    .content { padding: 20px; background: #ffffff; border-radius: 0 0 8px 8px; }
-    .info { background: #f4f4f4; padding: 15px; border-radius: 4px; margin: 10px 0; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>New User Registration</h1>
-    </div>
-    <div class="content">
-      <p>A new user has registered on Oak Jobs.</p>
-      <div class="info">
-        <p><strong>Name:</strong> ${name}</p>
-        <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
-      </div>
-      <p>Log in to the admin panel to view more details.</p>
-      <p><a href="https://oakjobs.online/admin">https://oakjobs.online/admin</a></p>
     </div>
   </div>
 </body>
