@@ -641,4 +641,5 @@ export async function getJobs(page: number = 1, limit: number = 10, filters: any
     total,
     totalPages: Math.ceil(total / limit),
   };
+
 }
