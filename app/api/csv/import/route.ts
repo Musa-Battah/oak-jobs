@@ -34,40 +34,67 @@ export async function POST(request: NextRequest) {
     let csvContent = '';
     const contentType = request.headers.get('content-type') || '';
 
-    if (contentType.includes('multipart/form-data')) {
-      const formData = await request.formData();
-      const file = formData.get('file') as File | null;
-      
-      if (!file) {
-        return NextResponse.json(
-          { error: 'No file uploaded' },
-          { status: 400 }
-        );
+    try {
+      if (contentType.includes('multipart/form-data')) {
+        const formData = await request.formData();
+        const file = formData.get('file') as File | null;
+        
+        if (!file) {
+          return NextResponse.json(
+            { error: 'No file uploaded' },
+            { status: 400 }
+          );
+        }
+
+        const fileName = file.name.toLowerCase();
+        if (!fileName.endsWith('.csv') && !file.type.includes('csv')) {
+          return NextResponse.json(
+            { error: 'Only CSV files are allowed' },
+            { status: 400 }
+          );
+        }
+
+        csvContent = await file.text();
+      } else {
+        // For GitHub Actions, the body is the CSV content
+        csvContent = await request.text();
       }
-
-      const fileName = file.name.toLowerCase();
-      if (!fileName.endsWith('.csv') && !file.type.includes('csv')) {
-        return NextResponse.json(
-          { error: 'Only CSV files are allowed' },
-          { status: 400 }
-        );
-      }
-
-      csvContent = await file.text();
-    } else {
-      csvContent = await request.text();
-    }
-
-    if (!csvContent) {
+    } catch (error) {
+      console.error('Error reading CSV content:', error);
       return NextResponse.json(
-        { error: 'No CSV content provided' },
+        { error: 'Failed to read CSV content' },
         { status: 400 }
       );
     }
 
-    // 4. Parse CSV
+    if (!csvContent || csvContent.trim().length === 0) {
+      return NextResponse.json({
+        success: true,
+        message: 'No CSV content provided',
+        imported: 0,
+        updated: 0,
+        skipped: 0,
+        errors: 0,
+        total_jobs: 0,
+      });
+    }
+
     console.log(`📊 Parsing CSV content (${csvContent.length} bytes)...`);
-    const jobs = parseCSV(csvContent);
+    
+    // 4. Parse CSV - with try-catch for parsing errors
+    let jobs = [];
+    try {
+      jobs = parseCSV(csvContent);
+    } catch (parseError) {
+      console.error('❌ CSV parsing error:', parseError);
+      return NextResponse.json(
+        { 
+          error: 'Failed to parse CSV',
+          details: parseError instanceof Error ? parseError.message : 'Unknown parsing error'
+        },
+        { status: 400 }
+      );
+    }
     
     console.log(`📊 Parsed ${jobs.length} jobs from CSV`);
     
@@ -83,8 +110,20 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 5. Import jobs
-    const result = await importJobs(jobs);
+    // 5. Import jobs - with try-catch for import errors
+    let result;
+    try {
+      result = await importJobs(jobs);
+    } catch (importError) {
+      console.error('❌ Import error:', importError);
+      return NextResponse.json(
+        { 
+          error: 'Failed to import jobs',
+          details: importError instanceof Error ? importError.message : 'Unknown import error'
+        },
+        { status: 500 }
+      );
+    }
 
     // 6. Send Telegram notification - INDIVIDUAL messages for each new job
     if (result.inserted > 0) {
@@ -120,6 +159,7 @@ export async function POST(request: NextRequest) {
           
           successCount++;
           
+          // Small delay between messages to avoid rate limiting
           await new Promise(resolve => setTimeout(resolve, 300));
         } catch (error) {
           console.error('Failed to send Telegram notification for job:', job.title, error);
@@ -144,7 +184,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('CSV import error:', error);
+    console.error('❌ CSV import error:', error);
     return NextResponse.json(
       { 
         error: 'Failed to import CSV',
